@@ -1,0 +1,265 @@
+const { doctors } = require("../models/doctor");
+require("dotenv").config();
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
+const sgMail = require("@sendgrid/mail");
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+const cloudinary = require('cloudinary').v2;
+
+// Configuration 
+cloudinary.config({
+  cloud_name: "daqa6ffob",
+  api_key: "541712939696956",
+  api_secret: "3O2WTt2HcssANsDhc_xTgjmnYEo"
+});
+
+const doctorSignUp = async (req, res) => {
+  try {
+    if (!req.body.email) {
+      return res.status(400).send({
+        success: false,
+        message: "This Email Is Required",
+      });
+    }
+
+    if (!req.body.phone_number) {
+      return res.status(400).send({
+        success: false,
+        message: "This Phone Number Is Required",
+      });
+    }
+
+    if (!req.body.first_name) {
+      return res.status(400).send({
+        success: false,
+        message: "This First Name Is Required",
+      });
+    }
+
+    if (!req.body.last_name) {
+      return res.status(400).send({
+        success: false,
+        message: "This Last Name Is Required",
+      });
+    }
+
+    if (!req.body.field) {
+      return res.status(400).send({
+        success: false,
+        message: "This Field Is Required",
+      });
+    }
+
+    const checkEmail = await doctors.findOne({ email: req.body.email });
+    if (checkEmail) {
+      return res.status(400).send({
+        success: false,
+        message: "This Email is already Exist",
+      });
+    }
+
+    const checkPhone = await doctors.findOne({
+      phone_number: req.body.phone_number,
+    });
+    if (checkPhone) {
+      return res.status(400).send({
+        success: false,
+        message: "This Phone Number is already Exist",
+      });
+    }
+
+    const doctor = new doctors({
+      email: req.body.email,
+      phone_number: req.body.phone_number,
+      first_name: req.body.first_name,
+      last_name: req.body.last_name,
+      password: req.body.password,
+      field: req.body.field,
+    });
+    let saltPassword = await bcrypt.genSalt(10);
+    let encryptedPassword = await bcrypt.hash(doctor.password, saltPassword);
+    doctor.password = encryptedPassword;
+
+    await doctor.save();
+
+    const token = jwt.sign(
+      { _id: doctor._id, email: doctor.email },
+      process.env.TOKEN_KEY,
+      {
+        expiresIn: "30d",
+      }
+    );
+
+    return res.status(200).send({
+      success: true,
+      message: "Doctor Registered Successfully",
+      data: doctor,
+      token,
+    });
+  } catch (e) {
+    console.log(e);
+    return res.status(400).send({
+      success: false,
+      message: "Something went wrong",
+    });
+  }
+};
+
+const doctorSignIn = async (req, res) => {
+  try {
+    if (!req.body.email) {
+      return res.status(400).send({
+        success: false,
+        message: "Email Is Required",
+      });
+    }
+
+    if (!req.body.password) {
+      return res.status(400).send({
+        success: false,
+        message: "Password Is Required",
+      });
+    }
+
+    const checkUser = await doctors.findOne({ email: req.body.email });
+
+    if (!checkUser) {
+      return res.status(400).send({
+        success: false,
+        message: "Invalid Email",
+      });
+    }
+
+    if (
+      checkUser &&
+      (await bcrypt.compare(req.body.password, checkUser.password))
+    ) {
+      const token = jwt.sign(
+        { _id: checkUser._id, email: checkUser.email },
+        process.env.TOKEN_KEY,
+        {
+          expiresIn: "30d",
+        }
+      );
+
+      return res.status(200).send({
+        success: true,
+        message: "Doctor Login Successfully",
+        data: checkUser,
+        token,
+      });
+    } else {
+      return res.status(400).send({
+        success: false,
+        message: "Invalid Credentials",
+      });
+    }
+  } catch (e) {
+    console.log(e);
+    return res.status(400).send({
+      success: false,
+      message: "Something went wrong",
+    });
+  }
+};
+
+const uploadDegree = async (req, res) => {
+  try {
+    const localDate = new Date();
+    const months = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+
+    const days = [
+      "Sunday",
+      "Monday ",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    const currentDay = days[localDate.getDay()];
+
+    const currentDate = localDate.getDate();
+
+    const currentMonth = months[localDate.getMonth()];
+
+    const currentYear = localDate.getFullYear();
+
+    const degreeImage=req.files.degreeImg
+
+    const response = await cloudinary.uploader.upload(degreeImage.tempFilePath);
+
+    const msg = {
+      to: process.env.RECEIVER_EMAIL,
+      from: {
+        name: "HIDDEN THERAPY",
+        email: process.env.SENDGRID_SENDER_EMAIL,
+      },
+      subject: "PROPOSAL TO ACTIVATE ACCOUNT",
+      templateId: process.env.SENDGRID_SENDDEGREE_TEMPLATE_ID,
+      dynamicTemplateData: {
+        DOCTOR_EMAIL: req.body.doctorEmail,
+        DOCTOR_ID: req.query.doctorId,
+        DATE: `${currentDay} ${currentDate} ${currentMonth} ${currentYear}`,
+        DEGREE_PIC: `${response.url}`,
+      },
+    };
+    sgMail.send(msg).then(() => {
+      return res.status(200).send({
+        success: true,
+        message: "Email Sent Successfully",
+      });
+    });
+  } catch (e) {
+    console.log(e);
+    return res.status(400).send({
+      success: false,
+      message: "Something went wrong",
+    });
+  }
+};
+
+const activateAccount=async (req,res)=>{
+  try{
+
+    const {doctorId}=req.body
+
+    const checkDoctor = await doctors.findOne({ _id: doctorId });
+
+    if (!checkDoctor) {
+      return res.status(400).send({
+        success: false,
+        message: "Invalid Doctor ID",
+      });
+    }
+
+    const activateAccount=await doctors.findOneAndUpdate({_id:doctorId},{isVerified:true},{new:true})
+
+    return res.status(200).send({
+      success: true,
+      message: "Doctor Account Verified Successfully",
+    });
+
+  }catch (e) {
+    console.log(e);
+    return res.status(400).send({
+      success: false,
+      message: "Something went wrong",
+    });
+  }
+}
+
+module.exports = { doctorSignUp, doctorSignIn, uploadDegree, activateAccount };
