@@ -6,11 +6,10 @@ const sgMail = require("@sendgrid/mail");
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 const cloudinary = require('cloudinary').v2;
 
-// Configuration 
 cloudinary.config({
-  cloud_name: "daqa6ffob",
-  api_key: "541712939696956",
-  api_secret: "3O2WTt2HcssANsDhc_xTgjmnYEo"
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
 const doctorSignUp = async (req, res) => {
@@ -201,6 +200,7 @@ const uploadDegree = async (req, res) => {
     const degreeImage=req.files.degreeImg
 
     const response = await cloudinary.uploader.upload(degreeImage.tempFilePath);
+    const degreeUpdate=await doctors.findOneAndUpdate({_id:req.query.doctorId},{degreePic:`${response.url}`},{new:true})
 
     const msg = {
       to: process.env.RECEIVER_EMAIL,
@@ -223,6 +223,8 @@ const uploadDegree = async (req, res) => {
         message: "Email Sent Successfully",
       });
     });
+
+   
   } catch (e) {
     console.log(e);
     return res.status(400).send({
@@ -262,4 +264,76 @@ const activateAccount=async (req,res)=>{
   }
 }
 
-module.exports = { doctorSignUp, doctorSignIn, uploadDegree, activateAccount };
+const allDoctors=async(req,res)=>{
+  try{
+
+    const fetchDoctors=await doctors.find({isVerified:true})
+
+    return res.status(200).send({
+      success: true,
+      message: "These are all verified Doctors",
+      data:fetchDoctors
+    });
+
+  }catch (e) {
+    console.log(e);
+    return res.status(400).send({
+      success: false,
+      message: "Something went wrong",
+    });
+  }
+}
+
+const searchdoctors=async(req,res)=>{
+  try{
+
+    if(req.body.doctorName && !req.body.doctorField){
+      const fetchDoctor= await doctors.find({first_name:{'$regex':new RegExp(req.body.doctorName,"i")},isVerified:true})
+
+      return res.status(200).send({
+        success: true,
+        message: "Your Searching Result",
+        data:fetchDoctor
+      });
+    }
+
+    if(!req.body.doctorName && req.body.doctorField){
+      const fetchDoctor= await doctors.find({field:req.body.doctorField,isVerified:true})
+
+      return res.status(200).send({
+        success: true,
+        message: "Your Searching Result",
+        data:fetchDoctor
+      });
+    }
+
+    if(req.body.doctorName && req.body.doctorField){
+      const fetchDoctor= await doctors.find({first_name:{'$regex':new RegExp(req.body.doctorName,"i")},field:req.body.doctorField,isVerified:true})
+
+      return res.status(200).send({
+        success: true,
+        message: "Your Searching Result",
+        data:fetchDoctor
+      });
+    }
+
+    if(!req.body.doctorName && !req.body.doctorField){
+      const fetchDoctor= await doctors.find({isVerified:true})
+
+      return res.status(200).send({
+        success: true,
+        message: "Your Searching Result",
+        data:fetchDoctor
+      });
+    }
+
+  }catch (e) {
+    console.log(e);
+    return res.status(400).send({
+      success: false,
+      message: "Something went wrong",
+    });
+  }
+}
+
+module.exports = { doctorSignUp, doctorSignIn, uploadDegree, activateAccount,allDoctors,searchdoctors };

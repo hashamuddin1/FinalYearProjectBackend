@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
-//creating schema of ads detail
+
 const user_schema = new mongoose.Schema({
     first_name: {
         type: String,
