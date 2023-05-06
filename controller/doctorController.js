@@ -336,4 +336,38 @@ const searchdoctors=async(req,res)=>{
   }
 }
 
-module.exports = { doctorSignUp, doctorSignIn, uploadDegree, activateAccount,allDoctors,searchdoctors };
+const SpecificDoctor=async(req,res)=>{
+  try{
+
+    if(!req.query.doctorId){
+      return res.status(400).send({
+        success: false,
+        message: "Kindly Provide Doctor ID",
+      });
+    }
+
+    const fetchDoctor=await doctors.find({_id:new Object(req.query.doctorId)})
+
+    return res.status(200).send({
+      success: true,
+      message: "Your Doctor",
+      data:fetchDoctor
+    });
+
+  }catch (e) {
+    console.log(e);
+    return res.status(400).send({
+      success: false,
+      message: "Something went wrong",
+    });
+  }
+}
+
+module.exports = { 
+  doctorSignUp,
+  doctorSignIn,
+  uploadDegree,
+  activateAccount,
+  allDoctors,
+  searchdoctors,
+  SpecificDoctor };

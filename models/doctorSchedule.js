@@ -32,6 +32,10 @@ const schedule_schema = new mongoose.Schema({
         trim: true,
         required: true,
     },
+    totalAppointment: {
+        type: Number,
+        required: true,
+    },
 
 })
 

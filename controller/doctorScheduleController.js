@@ -30,6 +30,7 @@ const doctorScheduleCreate=async(req,res)=>{
         price:req.body.price,
         doctorId:DoctorId,
         location:req.body.location,
+        totalAppointment:req.body.totalAppointment
     })
 
     await insertSchedule.save()
