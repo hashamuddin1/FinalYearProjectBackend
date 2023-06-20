@@ -8,15 +8,13 @@ const schedule_schema = new mongoose.Schema({
         required: true,
         enum:["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
     },
-    time: {
+    from: {
         type: String,
         required: true,
     },
-    type: {
+    to: {
         type: String,
-        trim: true,
         required: true,
-        enum:["Onsite","Online"]
     },
     price: {
         type: Number,
@@ -26,15 +24,6 @@ const schedule_schema = new mongoose.Schema({
     doctorId: {
         type: Schema.Types.ObjectId,
         ref: "doctors"
-    },
-    location: {
-        type: String,
-        trim: true,
-        required: true,
-    },
-    totalAppointment: {
-        type: Number,
-        required: true,
     },
 
 })
